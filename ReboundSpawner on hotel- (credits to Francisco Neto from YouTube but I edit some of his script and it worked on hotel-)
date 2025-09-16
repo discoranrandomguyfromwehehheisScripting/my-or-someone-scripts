@@ -1,0 +1,306 @@
+local maxRebounds = math.random(3, 4)
+local val = 80
+local cameraShaker = require(game.ReplicatedStorage.CameraShaker)
+local camera = workspace.CurrentCamera
+local camShake = cameraShaker.new(Enum.RenderPriority.Camera.Value, function(cf)
+	camera.CFrame = camera.CFrame * cf
+end)
+
+function GetGitSound(GithubSnd, SoundName)
+    -- URL of the sound file on GitHub
+    local url = GithubSnd
+    
+    -- Check if the sound file is already downloaded
+    if not isfile(SoundName..".mp3") then
+        -- Download and save the sound as an MP3 file
+        writefile(SoundName..".mp3", game:HttpGet(url))
+    end
+    
+    -- Create a new Sound instance
+    local sound = Instance.new("Sound")
+    
+    -- Set the SoundId to the downloaded file
+    sound.SoundId = (getcustomasset or getsynasset)(SoundName..".mp3")
+    
+    -- Return the sound instance
+    return sound
+end
+
+function LoadCustomInstance(source, parent)
+	local model
+
+	-- Normalize GitHub URL if needed
+	local function NormalizeGitHubURL(url)
+		if url:match("^https://github.com/.+%.rbxm$") and not url:find("?raw=true") then
+			return url .. "?raw=true"
+		end
+		return url
+	end
+
+	while task.wait() and not model do
+		if type(source) == "number" or tostring(source):match("^%d+$") then
+			-- Asset ID loading
+			print("🔄 Trying to load model from Asset ID: " .. tostring(source))
+
+			local success, result = pcall(function()
+				return game:GetObjects("rbxassetid://" .. tostring(source))[1]
+			end)
+
+			if success and result then
+				model = result
+			else
+				print("❌ [LoadCustomInstance]: Failed to load asset ID " .. tostring(source) .. ". Retrying... 🔄")
+				task.wait(0.5)
+			end
+
+		elseif type(source) == "string" and source:match("^https?://") and source:match("%.rbxm") then
+			-- GitHub URL loading
+			local url = NormalizeGitHubURL(source)
+			print("🌐 Trying to load .rbxm model from URL: " .. url)
+
+			local success, result = pcall(function()
+				local fileName = "temp_" .. tostring(math.random(100000, 999999)) .. ".rbxm"
+				writefile(fileName, game:HttpGet(url))
+				local obj = game:GetObjects((getcustomasset or getsynasset)(fileName))[1]
+				delfile(fileName)
+				return obj
+			end)
+
+			if success and result then
+				model = result
+			else
+				print("❌ [LoadCustomInstance]: Failed to load from URL. Retrying... 🔄")
+				task.wait(0.5)
+			end
+
+		else
+			warn("🚫 Invalid source type. Must be Asset ID (number) or .rbxm GitHub URL.")
+			break
+		end
+
+		if model then
+			model.Parent = parent or workspace
+
+			for _, obj in ipairs(model:GetDescendants()) do
+				if obj:IsA("Script") or obj:IsA("LocalScript") then
+					obj:Destroy()
+				end
+			end
+
+			pcall(function()
+				model:SetAttribute("LoadedByExecutor", true)
+			end)
+
+			print("✅ [LoadCustomInstance]: Model " .. model.Name .. " successfully loaded into " .. model.Parent:GetFullName())
+		end
+	end
+
+	return model
+end
+
+local config = {
+	Death = {
+		Hints = {
+			"You died to who you call Rebound...",
+			"He may trick you by coming through walls or even floor/ceiling!",
+			"So Watch out in floor/ceiling, and see if you don't see any lights coming towards you...",
+			"Hide when this happens! and be careful..."
+		}
+	}
+}
+
+function Move()
+	--local s = LoadCustomInstance("https://github.com/Francisco1692qzd/ModelsEntitiesCustom/blob/main/whaaa.rbxm?raw=true", workspace)
+	local s = LoadCustomInstance("12254145022", workspace)
+	s.Parent = workspace
+	local killed = false
+	local entity = s:FindFirstChild("Rebound")
+
+	if not entity then
+		warn("[Rebound] Entity not found in model. Aborting.")
+		return
+	end
+
+	print("[Rebound] Entity found: Hello World!")
+
+	local function GetLastRoom()
+		local gruh = workspace.CurrentRooms
+		return gruh[game.ReplicatedStorage.GameData.LatestRoom.Value + 1]
+	end
+
+	entity.CFrame = GetLastRoom().RoomEnd.CFrame
+
+	local ReboundMoving = GetGitSound("https://github.com/Francisco1692qzd/Custom_DOORS_Entities_Assets/blob/main/reboundmoving.mp3", "ReboundMoving")
+	ReboundMoving.Volume = 10
+	ReboundMoving.Looped = false
+	ReboundMoving.Volume = 10
+	print("fixed and added "..ReboundMoving.Name.." sound!")
+	ReboundMoving.TimePosition = 0
+	ReboundMoving.Parent = entity
+
+	local function canSeeTarget(target, size)
+		if killed then return end
+		local hrp = target:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+		local origin = entity.Position
+		local direction = (hrp.Position - origin).unit * size
+		local ray = Ray.new(origin, direction)
+		local hit = workspace:FindPartOnRay(ray, entity)
+		if hit and hit:IsDescendantOf(target) then
+			killed = true
+			return true
+		else
+			return false
+		end
+	end
+
+	task.spawn(function()
+		while entity do
+			task.wait(0.5)
+			local v = game.Players.LocalPlayer
+			if v.Character and not v.Character:GetAttribute("Hiding") then
+				if canSeeTarget(v.Character, 50) then
+					ReboundMoving:Stop()
+					local ReboundJs = Instance.new("ScreenGui")
+					local Static = Instance.new("ImageLabel")
+					local Rebound = Instance.new("ImageLabel")
+					local JSSIZE = Instance.new("ImageLabel")
+
+					ReboundJs.Name = "ReboundJs"
+					ReboundJs.Parent = v:WaitForChild("PlayerGui")
+
+					Static.Name = "Static"
+					Static.Parent = ReboundJs
+					Static.BackgroundTransparency = 1
+					Static.Size = UDim2.new(11, 0, 111, 0)
+					Static.Image = "rbxassetid://236543215"
+					Static.ImageTransparency = 1
+
+					Rebound.Name = "Rebound"
+					Rebound.Parent = ReboundJs
+					Rebound.BackgroundTransparency = 1
+					Rebound.Position = UDim2.new(0.4866, 0, 0.4793, 0)
+					Rebound.Size = UDim2.new(0.0267, 0, 0.0387, 0)
+					Rebound.Image = "rbxassetid://10914800940"
+
+					JSSIZE.Name = "JSSIZE"
+					JSSIZE.Parent = ReboundJs
+					JSSIZE.BackgroundTransparency = 1
+					JSSIZE.Position = UDim2.new(-0.586, 0, -1.251, 0)
+					JSSIZE.Size = UDim2.new(2.128, 0, 3.081, 0)
+					JSSIZE.Visible = false
+					JSSIZE.Image = "rbxassetid://10914800940"
+
+					task.spawn(function()
+						local script = Static
+						while true do
+							script.Image = "rbxassetid://236543215"
+							task.wait(0.002)
+							script.Rotation = 0
+							task.wait(0.002)
+							script.Rotation = 180
+							task.wait(0.002)
+							script.Image = "rbxassetid://236777652"
+							task.wait(0.002)
+							script.Rotation = 0
+							task.wait(0.002)
+							script.Rotation = 180
+							task.wait(0.002)
+						end
+					end)
+
+					task.spawn(function()
+						local Plr = v
+						local gui = ReboundJs
+						local static = gui.Static
+						local jspos = gui.JSSIZE
+
+						game:GetService("TweenService"):Create(static, TweenInfo.new(0.5), {ImageTransparency = 0.8}):Play()
+						game:GetService("TweenService"):Create(gui.Rebound, TweenInfo.new(0.5), {
+							Size = jspos.Size,
+							Position = jspos.Position
+						}):Play()
+						task.spawn(function()
+							task.wait(0.3)
+							local humanoid = Plr.Character and Plr.Character:FindFirstChildWhichIsA("Humanoid")
+							if humanoid then
+								humanoid:TakeDamage(100)
+							end
+							pcall(function()
+								game.ReplicatedStorage.GameStats["Player_" .. Plr.Name].Total.DeathCause.Value = "Rebound"
+							end)
+							task.wait(1)
+							local remotesFolder = game.ReplicatedStorage.RemotesFolder
+							local colour = "Blue"
+							firesignal(remotesFolder.DeathHint.OnClientEvent, config.Death.Hints, colour)
+						end)
+						task.wait(0.5)
+						game:GetService("TweenService"):Create(static, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+						game:GetService("TweenService"):Create(gui.Rebound, TweenInfo.new(0.3), {ImageTransparency = 1}):Play()
+						task.wait(1)
+						gui:Destroy()
+					end)
+				end
+			end
+			local hrp = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
+			if hrp and (entity.Position - hrp.Position).Magnitude <= val then
+				camShake:Start()
+				camShake:ShakeOnce(17, 6, 0.1, 1)
+			end
+		end
+	end)
+
+	task.wait(4)
+	ReboundMoving:Play()
+	local gruh = workspace.CurrentRooms
+	for i = game.ReplicatedStorage.GameData.LatestRoom.Value, 1, -1 do
+		if gruh:FindFirstChild(i) then
+			local room = gruh:FindFirstChild(i)
+			if room:FindFirstChild("RoomStart") then
+				local a = room:FindFirstChild("RoomStart")
+				local tween = game:GetService("TweenService"):Create(entity, TweenInfo.new(2, Enum.EasingStyle.Sine), {CFrame = a.CFrame})
+				tween:Play()
+				tween.Completed:Wait()
+			end
+		end
+	end
+
+	entity.Anchored = false
+	entity.CanCollide = false
+	game:GetService("Debris"):AddItem(s, 5)
+end
+
+function Rebound()
+	local sound = Instance.new("Sound", workspace)
+	sound.SoundId = "rbxassetid://14093035297"
+	sound.Volume = 6
+	sound.TimePosition = 0
+	sound:Play()
+	game.Debris:AddItem(sound, 20)
+	local Warn = Instance.new("ColorCorrectionEffect")
+	game.Debris:AddItem(Warn, 30)
+	Warn.Parent = game:GetService("Lighting")
+	Warn.TintColor = Color3.fromRGB(65, 138, 255)
+	Warn.Saturation = -0.7
+	Warn.Contrast = 0.2
+
+	game:GetService("TweenService"):Create(Warn, TweenInfo.new(15), {
+		TintColor = Color3.fromRGB(255, 255, 255),
+		Saturation = 0,
+		Contrast = 0
+	}):Play()
+
+	camShake:Start()
+	camShake:ShakeOnce(10, 3, 0.1, 6, 2, 0.5)
+	pcall(Move)
+
+	while task.wait() and maxRebounds ~= 0 do
+		game.ReplicatedStorage.GameData.LatestRoom.Changed:Wait()
+		task.wait(2)
+		pcall(Move)
+		maxRebounds = maxRebounds - 1
+	end
+end
+
+pcall(Rebound)
+warn("[Rebound] Fully Executed!")
