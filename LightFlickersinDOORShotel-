@@ -1,0 +1,44 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
+
+local Module_Events = require(ReplicatedStorage.ClientModules.Module_Events)
+
+-- 1. Get all value rooms (children of CurrentRooms that are Models with number names)
+local currentRooms = Workspace:FindFirstChild("CurrentRooms")
+if not currentRooms then
+    warn("CurrentRooms folder not found in Workspace.")
+    return
+end
+
+local valueRooms = {}
+for _, child in currentRooms:GetChildren() do
+    if child:IsA("Model") and tonumber(child.Name) then
+        table.insert(valueRooms, child)
+    end
+end
+
+if #valueRooms == 0 then
+    warn("No value rooms found in CurrentRooms.")
+    return
+end
+
+-- 2. Find the last value room (highest-numbered)
+local lastRoom = valueRooms[1]
+for _, room in valueRooms do
+    if tonumber(room.Name) > tonumber(lastRoom.Name) then
+        lastRoom = room
+    end
+end
+
+-- 3. Find the "RoomStart" part inside the last room
+local roomStart = lastRoom:FindFirstChild("RoomStart")
+if not roomStart or not roomStart:IsA("BasePart") then
+    warn("RoomStart part not found in last value room.")
+    return
+end
+
+-- 5. Flicker lights in all value rooms
+for _, room in valueRooms do
+    Module_Events.flickerLights(room, 34)
+end
