@@ -1,0 +1,109 @@
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+
+-- Find all room models in Workspace.CurrentRooms, sort by numeric name ascending
+local roomsFolder = Workspace:FindFirstChild("CurrentRooms")
+if not roomsFolder then
+    warn("CurrentRooms folder not found in Workspace")
+    return
+end
+
+local roomModels = {}
+for _, child in roomsFolder:GetChildren() do
+    if child:IsA("Model") then
+        local num = tonumber(child.Name)
+        if num ~= nil then
+            table.insert(roomModels, {model = child, num = num})
+        end
+    end
+end
+
+-- Sort rooms by their numeric name ascending
+table.sort(roomModels, function(a, b)
+    return a.num < b.num
+end)
+
+if #roomModels == 0 then
+    warn("No room models found in CurrentRooms")
+    return
+end
+
+-- Spawn FollowerPart at the RoomStart of the first room
+local firstRoom = roomModels[1].model
+local roomStart = firstRoom:FindFirstChild("RoomStart")
+if not roomStart then
+    warn("RoomStart not found in first room")
+    return
+end
+
+-- Create FollowerPart if it doesn't exist
+local followerPart = Workspace:FindFirstChild("FollowerPart")
+if not followerPart then
+    followerPart = Instance.new("Part")
+    followerPart.Name = "FollowerPart"
+    followerPart.Size = Vector3.new(2,2,2)
+    followerPart.Anchored = true
+    followerPart.CanCollide = false
+    followerPart.Parent = Workspace
+end
+
+-- Move FollowerPart to RoomStart
+followerPart.CFrame = roomStart.CFrame
+
+-- Gather all nodes in all rooms, in order
+local allNodes = {}
+for i = 1, #roomModels do
+    local room = roomModels[i].model
+    local nodesFolder = room:FindFirstChild("Nodes")
+    if nodesFolder then
+        -- Sort nodes by name (numeric order)
+        local nodes = {}
+        for _, node in nodesFolder:GetChildren() do
+            if node:IsA("BasePart") then
+                local nodeNum = tonumber(node.Name)
+                table.insert(nodes, {part = node, num = nodeNum or math.huge})
+            end
+        end
+        table.sort(nodes, function(a, b)
+            return a.num < b.num
+        end)
+        for j = 1, #nodes do
+            table.insert(allNodes, nodes[j].part)
+        end
+    end
+end
+
+-- Function to move FollowerPart smoothly to a target part
+local function moveTo(part, speed)
+    local reached = false
+    local connection
+    connection = RunService.Heartbeat:Connect(function(dt)
+        if not part or not part.Parent or not followerPart or not followerPart.Parent then
+            connection:Disconnect()
+            return
+        end
+        local targetPos = part.Position
+        local currentPos = followerPart.Position
+        local direction = (targetPos - currentPos)
+        local distance = direction.Magnitude
+        if distance < 0.1 then
+            followerPart.Position = targetPos
+            reached = true
+            connection:Disconnect()
+            return
+        end
+        local step = math.min(speed * dt, distance)
+        followerPart.Position = currentPos + direction.Unit * step
+    end)
+    -- Wait until reached
+    while not reached do
+        task.wait(0.01)
+    end
+end
+
+-- Move FollowerPart to each node in order
+local moveSpeed = 10 -- studs per second
+for i = 1, #allNodes do
+    moveTo(allNodes[i], moveSpeed)
+    task.wait(0.2)
+end
