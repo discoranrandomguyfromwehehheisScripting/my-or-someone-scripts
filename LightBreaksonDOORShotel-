@@ -1,0 +1,14 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local Module_Events = require(ReplicatedStorage.ClientModules.Module_Events)
+
+local currentRooms = Workspace:FindFirstChild("CurrentRooms")
+if currentRooms then
+    for _, room in currentRooms:GetChildren() do
+        Module_Events.breakLights(room)
+    end
+else
+    warn("CurrentRooms folder not found in Workspace.")
+end
